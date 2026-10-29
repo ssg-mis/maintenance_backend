@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model alerts {
+  id                String   @id @db.VarChar(100)
+  machine_id        Int
+  machine_name      String   @db.VarChar(200)
+  type              String   @db.VarChar(50)
+  title             String   @db.VarChar(255)
+  message           String
+  severity          String   @db.VarChar(20)
+  is_read           Boolean  @default(false)
+  auto_task_created Boolean  @default(false)
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  machines          machines @relation(fields: [machine_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model breakdown_logs {
+  id                  String   @id @db.VarChar(80)
+  machine_id          Int
+  machine_name        String   @db.VarChar(200)
+  breakdown_date      DateTime @db.Timestamptz(6)
+  failure_type        String   @db.VarChar(50)
+  root_cause          String
+  downtime_hours      Decimal  @default(0) @db.Decimal(10, 2)
+  downtime_cost       Decimal  @default(0) @db.Decimal(14, 2)
+  status              String   @db.VarChar(30)
+  severity            String   @db.VarChar(20)
+  technician_assigned String   @default("Unassigned") @db.VarChar(150)
+  action_taken        String?  @default("")
+  created_at          DateTime @default(now()) @db.Timestamptz(6)
+  machines            machines @relation(fields: [machine_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model complaint_history {
+  id                Int        @id @default(autoincrement())
+  complaint_id      String     @db.VarChar(60)
+  action            String     @db.VarChar(100)
+  performed_by      String     @db.VarChar(100)
+  performed_by_name String?    @db.VarChar(150)
+  details           String?
+  previous_state    Json?      @default("{}")
+  new_state         Json?      @default("{}")
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  complaints        complaints @relation(fields: [complaint_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([complaint_id, created_at(sort: Desc)], map: "idx_complaints_history")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model complaints {
+  id                           String              @id @db.VarChar(60)
+  auto_complaint_id            String              @unique @db.VarChar(60)
+  company                      String              @db.VarChar(150)
+  business_name                String              @default("Botivate Services LLP") @db.VarChar(150)
+  beneficiary_name             String?             @db.VarChar(150)
+  id_number                    String?             @db.VarChar(100)
+  contact_number               String?             @db.VarChar(50)
+  village                      String?             @db.VarChar(100)
+  block                        String?             @db.VarChar(100)
+  district                     String?             @db.VarChar(100)
+  project_name                 String              @db.VarChar(150)
+  nature_of_complaint          String
+  description                  String?
+  complaint_date               DateTime            @default(dbgenerated("CURRENT_DATE")) @db.Date
+  mode_of_contact              String              @default("call") @db.VarChar(50)
+  status                       String              @default("Open") @db.VarChar(50)
+  assigned_technician_id       Int?
+  assigned_technician_name     String?             @db.VarChar(150)
+  assigned_at                  DateTime?           @db.Timestamptz(6)
+  assigned_by                  String?             @db.VarChar(100)
+  technician_notes             String?
+  technician_status            String?             @default("Pending") @db.VarChar(50)
+  technician_updated_at        DateTime?           @db.Timestamptz(6)
+  is_insurance                 Boolean             @default(false)
+  insurance_details            Json                @default("{}")
+  verification_status          String              @default("Pending") @db.VarChar(50)
+  verified_by                  String?             @db.VarChar(100)
+  verified_at                  DateTime?           @db.Timestamptz(6)
+  verification_remarks         String?
+  document_verification_status String              @default("Pending") @db.VarChar(50)
+  doc_verified_by              String?             @db.VarChar(100)
+  doc_verified_at              DateTime?           @db.Timestamptz(6)
+  doc_verification_remarks     String?
+  is_approved                  Boolean             @default(false)
+  approved_by                  String?             @db.VarChar(100)
+  approved_at                  DateTime?           @db.Timestamptz(6)
+  approval_remarks             String?
+  documents                    Json                @default("[]")
+  created_by                   String?             @default("System") @db.VarChar(100)
+  created_at                   DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime            @default(now()) @db.Timestamptz(6)
+  planned_at                   DateTime?           @db.Timestamptz(6)
+  completed_date               DateTime?           @db.Date
+  closed_date                  DateTime?           @db.Date
+  complaint_history            complaint_history[]
+  team_members                 team_members?       @relation(fields: [assigned_technician_id], references: [id], onUpdate: NoAction)
+
+  @@index([company], map: "idx_complaints_company")
+  @@index([complaint_date(sort: Desc)], map: "idx_complaints_date")
+  @@index([status], map: "idx_complaints_status")
+  @@index([assigned_technician_id], map: "idx_complaints_tech")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model daily_machine_logs {
+  id            String   @id @db.VarChar(80)
+  machine_id    Int
+  machine_name  String   @db.VarChar(200)
+  log_date      DateTime @db.Date
+  runtime_hours Decimal  @db.Decimal(10, 2)
+  temperature   Decimal  @db.Decimal(10, 2)
+  load          Decimal  @db.Decimal(5, 2)
+  operator_name String   @db.VarChar(150)
+  remarks       String?  @default("")
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  machines      machines @relation(fields: [machine_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model machines {
+  id                     Int                  @id @default(autoincrement())
+  name                   String               @db.VarChar(200)
+  serial_number          String?              @unique @db.VarChar(150)
+  model                  String?              @db.VarChar(150)
+  manufacturer           String?              @db.VarChar(200)
+  department             String?              @db.VarChar(100)
+  location               String?              @db.VarChar(255)
+  status                 String               @default("operational") @db.VarChar(30)
+  purchase_date          DateTime?            @db.Date
+  purchase_price         Decimal?             @default(0) @db.Decimal(14, 2)
+  vendor                 String?              @db.VarChar(200)
+  warranty_expiration    DateTime?            @db.Date
+  last_maintenance       DateTime?            @db.Date
+  next_maintenance       DateTime?            @db.Date
+  maintenance_schedule   String[]             @default([])
+  total_repair_cost      Decimal              @default(0) @db.Decimal(14, 2)
+  repair_count           Int                  @default(0)
+  health_score           Decimal              @default(100) @db.Decimal(5, 2)
+  runtime_threshold      Decimal              @default(80) @db.Decimal(10, 2)
+  temperature_threshold  Decimal              @default(65) @db.Decimal(10, 2)
+  criticality            String               @default("Medium") @db.VarChar(20)
+  expected_daily_runtime Decimal?             @db.Decimal(10, 2)
+  image                  String?
+  assigned_user          String?              @db.VarChar(100)
+  task_assigned          Boolean              @default(false)
+  maintenance_parts      String[]             @default([])
+  created_at             DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime             @default(now()) @db.Timestamptz(6)
+  alerts                 alerts[]
+  breakdown_logs         breakdown_logs[]
+  daily_machine_logs     daily_machine_logs[]
+  repair_records         repair_records[]
+  tasks                  tasks[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model repair_records {
+  id          Int      @id @default(autoincrement())
+  machine_id  Int
+  repair_date DateTime @db.Date
+  type        String   @db.VarChar(30)
+  issue       String
+  technician  String   @db.VarChar(150)
+  cost        Decimal  @default(0) @db.Decimal(14, 2)
+  parts       String[] @default([])
+  resolution  String?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  machines    machines @relation(fields: [machine_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model task_approvals {
+  id          Int       @id @default(autoincrement())
+  task_id     String    @unique @db.VarChar(80)
+  status      String    @db.VarChar(20)
+  reviewed_by String?   @db.VarChar(100)
+  reviewed_at DateTime? @db.Timestamptz(6)
+  remarks     String?
+  tasks       tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model task_checklist_history {
+  id           Int      @id @default(autoincrement())
+  task_id      String   @db.VarChar
+  submitted_by String   @default("Current User") @db.VarChar(255)
+  action       String   @default("Checklist submitted")
+  submitted_at DateTime @default(now()) @db.Timestamptz(6)
+  items        Json     @default("[]")
+  tasks        tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model task_checklist_items {
+  id               Int       @id @default(autoincrement())
+  task_id          String    @db.VarChar
+  task_no          String    @default("") @db.VarChar(100)
+  department       String?   @db.VarChar(255)
+  description      String    @default("")
+  task_status      String    @default("pending") @db.VarChar(50)
+  image            String?
+  remarks          String?   @default("")
+  sound_of_machine String?   @default("")
+  temperature      String?   @default("")
+  maintenance_cost String?   @default("")
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  tasks            tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model task_documents {
+  id          Int      @id @default(autoincrement())
+  task_id     String   @db.VarChar(80)
+  name        String   @db.VarChar(255)
+  type        String   @default("File") @db.VarChar(100)
+  file_data   String?
+  uploaded_by String   @default("Current User") @db.VarChar(150)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  tasks       tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model tasks {
+  id                     String                   @id @db.VarChar(80)
+  machine_id             Int?
+  machine_name           String                   @db.VarChar(200)
+  department             String                   @db.VarChar(100)
+  type                   String                   @db.VarChar(120)
+  status                 String                   @db.VarChar(30)
+  due_date               DateTime                 @db.Date
+  completed_date         DateTime?                @db.Date
+  assigned_to            String                   @default("Unassigned") @db.VarChar(150)
+  priority               String                   @db.VarChar(20)
+  location               String?                  @db.VarChar(20)
+  vendor                 String?                  @db.VarChar(200)
+  description            String
+  estimated_cost         Decimal?                 @db.Decimal(14, 2)
+  from_alert             String?                  @db.VarChar(100)
+  temperature            String?                  @db.VarChar(50)
+  sound_of_machine       String?                  @db.VarChar(100)
+  remarks                String?
+  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  task_time              DateTime?                @db.Time(6)
+  frequency              String?                  @db.VarChar(20)
+  enable_reminder        Boolean                  @default(false)
+  require_attachment     Boolean                  @default(false)
+  machine_part           String?                  @db.VarChar(150)
+  given_by               String?                  @db.VarChar(150)
+  work_order_id          String?                  @db.VarChar(50)
+  bill_amount            Decimal?                 @db.Decimal(14, 2)
+  task_approvals         task_approvals?
+  task_checklist_history task_checklist_history[]
+  task_checklist_items   task_checklist_items[]
+  task_documents         task_documents[]
+  machines               machines?                @relation(fields: [machine_id], references: [id], onUpdate: NoAction)
+}
+
+model team_members {
+  id         Int          @id @default(autoincrement())
+  name       String       @db.VarChar(150)
+  image      String?
+  department String?      @db.VarChar(100)
+  experience String?      @db.VarChar(100)
+  skills     String[]     @default([])
+  created_at DateTime     @default(now()) @db.Timestamptz(6)
+  complaints complaints[]
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model users {
+  id               BigInt    @id @default(autoincrement())
+  username         String    @unique @db.VarChar(100)
+  password_hash    String    @db.VarChar(255)
+  role             String    @default("user") @db.VarChar(20)
+  employee_name    String?   @db.VarChar(150)
+  department       String?   @db.VarChar(100)
+  phone_number     String?   @db.VarChar(50)
+  employee_code    String?   @db.VarChar(50)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  email            String?   @db.VarChar(255)
+  status           String    @default("Active") @db.VarChar(20)
+  page_access      Json      @default("[]")
+  page_permissions Json      @default("{}")
+  location_access  String    @default("All Locations") @db.VarChar(150)
+}
